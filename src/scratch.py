@@ -1,9 +1,10 @@
-import json, hashlib, os, inspect, pathlib, zipfile, io, warnings
+import json, hashlib, os, sys, pathlib, zipfile, io, warnings, mutagen
 from typing import NamedTuple
 from PIL import Image
 
 type ScratchObj = Sprite | Stage
 FileData = NamedTuple('FileData', [('ext', str), ('data', bytes), ('hash', str)])
+main_dir = os.path.dirname(sys.argv[0])
 
 data: list[FileData] = []
 
@@ -33,10 +34,7 @@ class Project:
             'monitors': monitors,
             'meta': meta
         })
-        
-        caller_frame = inspect.stack()[1]
-        caller_module = inspect.getmodule(caller_frame[0])
-        main_dir = os.path.dirname(os.path.abspath(caller_module.__file__))
+
         zip_dir = (pathlib.Path(main_dir) / 'output.sb3').resolve()
         
         with zipfile.ZipFile(zip_dir, 'w') as f:
@@ -54,6 +52,7 @@ class Target:
         self.volume = 100
 
         self.costumes: list[Costume] = []
+        self.sounds: list[Sound] = []
     
     def json(self):
         return {
@@ -63,7 +62,7 @@ class Target:
             'blocks': {},
             'comments': {},
             'costumes': [costume.json() for costume in self.costumes],
-            'sounds': [],
+            'sounds': [sound.json() for sound in self.sounds],
             'currentCostume': self.current_costume,
             'layerOrder': self.layer_order,
             'volume': self.volume
@@ -96,9 +95,6 @@ class Asset:
         self.path = path
         self.filename, self.extension = path.rsplit('/', 1)[1].rsplit('.')
         
-        caller_frame = inspect.stack()[1]
-        caller_module = inspect.getmodule(caller_frame[0])
-        main_dir = os.path.dirname(os.path.abspath(caller_module.__file__))
         asset_path = (pathlib.Path(main_dir) / path).resolve()
         
         self.data = bytes()
@@ -129,4 +125,18 @@ class Costume(Asset):
             warnings.warn("WARNING: Pillow does not support SVG centering, Your vector sprite might not be centered", ResourceWarning)
             asset_json['rotationCenterX'] = 0
             asset_json['rotationCenterY'] = 0
+        return asset_json
+
+
+class Sound(Asset):
+    def json(self):
+        asset_json = super().json()
+        asset_json['bitmapResolution'] = 1
+        try:
+            soundtrack = mutagen.File(io.BytesIO(self.data))
+            sound_info = soundtrack.info
+            asset_json['rate'] = sound_info.sample_rate
+            asset_json['sampleCount'] = round(sound_info.sample_rate * sound_info.length)
+        except:
+            raise ValueError("Please pass in a proper audio file!")
         return asset_json
