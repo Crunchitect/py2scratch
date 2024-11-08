@@ -1,5 +1,7 @@
 import json, hashlib, os, sys, pathlib, zipfile, io, warnings, mutagen
-from typing import NamedTuple
+from functools import reduce
+from typing import NamedTuple, Callable
+from src.scratch_code import parse_func
 from PIL import Image
 
 type ScratchObj = Sprite | Stage
@@ -53,13 +55,15 @@ class Target:
 
         self.costumes: list[Costume] = []
         self.sounds: list[Sound] = []
+        self.funcs: list[Callable] = []
     
     def json(self):
+        scratch_code_data = reduce(lambda a, b: a | b, (parse_func(func) for func in self.funcs), {})
         return {
             'variables': {},
             'lists': {},
             'broadcasts': {},
-            'blocks': {},
+            'blocks': scratch_code_data,
             'comments': {},
             'costumes': [costume.json() for costume in self.costumes],
             'sounds': [sound.json() for sound in self.sounds],
@@ -68,12 +72,45 @@ class Target:
             'volume': self.volume
         }
 
+class RotationStyles:
+    ALL_AROUND = 'all around'
+    LEFT_RIGHT = 'left-right'
+    NONE = 'don\'t rotate'
 
 class Sprite(Target):
+    def __init__(self,
+                 name: str,
+                 z: int = 1, visible: bool = True, x: float = 0, y: float = 0,
+                 rotation: float = 90, rotation_style: str = RotationStyles.ALL_AROUND, scale: float = 100,
+                 draggable: bool = False):
+        self.name = name
+        self.layer_order = z
+        self.current_costume = 1
+        self.volume = 100
+        
+        self.x = x
+        self.y = y
+        self.rotation = rotation
+        self.rotation_style = rotation_style
+        self.scale = scale
+        self.draggable = draggable
+        self.visible = visible
+        
+        self.costumes: list[Costume] = []
+        self.sounds: list[Sound] = []
+        self.funcs: list[Callable] = []
+        
     def json(self):
         target_json = super().json()
         target_json['isStage'] = False
         target_json['name'] = self.name
+        target_json['x'] = self.x
+        target_json['y'] = self.y
+        target_json['visible'] = self.visible
+        target_json['direction'] = self.rotation
+        target_json['rotationStyle'] = self.rotation_style
+        target_json['scale'] = self.scale
+        target_json['draggable'] = self.draggable
         return target_json
 
 class Stage(Target):
