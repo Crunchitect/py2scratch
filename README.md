@@ -5,7 +5,7 @@
 
 ## Installation
 
-Just `pip install` this, Depencies are currently only `pillow`!
+Just `pip install` this, Depencies are currently `pillow`, `mutagen` and `astroid`!
 
 ```cmd
 pip install py2scratch
