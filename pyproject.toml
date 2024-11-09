@@ -7,7 +7,7 @@ packages = ["src"]
 
 [project]
 name = "py2scratch"
-version = "0.0.2dev1"
+version = "0.0.3dev1"
 authors = [{ name = "Crunchitect", email = "crunchitect@gmail.com" }]
 description = "A module that converts Python to Scratch (.sb3) files."
 readme = "README.md"
