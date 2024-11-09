@@ -7,17 +7,15 @@ packages = ["src"]
 
 [project]
 name = "py2scratch"
-version = "0.0.2"
-authors = [
-  { name="Crunchitect", email="crunchitect@gmail.com" },
-]
+version = "0.0.2dev1"
+authors = [{ name = "Crunchitect", email = "crunchitect@gmail.com" }]
 description = "A module that converts Python to Scratch (.sb3) files."
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
 ]
 
 [project.urls]
