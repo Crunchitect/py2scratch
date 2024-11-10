@@ -1,7 +1,7 @@
 import json, hashlib, os, sys, pathlib, zipfile, io, warnings, mutagen
 from functools import reduce
 from typing import NamedTuple, Callable
-from py2scratch.scratch_code import parse_func
+from src.scratch_code import parse_func
 from PIL import Image
 
 type ScratchObj = Sprite | Stage

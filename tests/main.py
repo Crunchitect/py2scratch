@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(0, '..')
-from py2scratch.scratch import Project, Stage, Sprite, Sound, Costume, RotationStyles
+from src.scratch import Project, Stage, Sprite, Sound, Costume, RotationStyles
 
 proj = Project()
 
