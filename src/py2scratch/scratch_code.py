@@ -1,4 +1,5 @@
 import astroid, inspect, abc, random, typing
+from .errors import *
 
 UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 LOWERCASE = 'abcdefghijklmnopqrstuvwxyz'
@@ -10,14 +11,6 @@ def gen_random_id(length: int = 10):
 def sliding_win(iterable: typing.Iterable, n: int = 3):
     for i in range(len(iterable)-n+1):
         yield [iterable[j] for j in range(i, i+n)]
-
-
-class PyToScratchError(Exception):
-    """ A base error for the py2scratch project. """
-class FuncNotFound(PyToScratchError):
-    """ No FunctionDef is provided. """
-class NoHatExists(PyToScratchError):
-    """ There is no hat blocks with the specified name. """
     
 class ScratchBlock:
     @abc.abstractmethod

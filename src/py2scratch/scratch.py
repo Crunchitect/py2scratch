@@ -1,7 +1,8 @@
 import json, hashlib, os, sys, pathlib, zipfile, io, warnings, mutagen
 from functools import reduce
 from typing import NamedTuple, Callable
-from py2scratch.scratch_code import parse_func
+from .scratch_code import parse_func
+from .errors import *
 from PIL import Image
 
 type ScratchObj = Sprite | Stage
@@ -17,7 +18,7 @@ class Project:
     def add(self, obj):
         self.dependencies.append(obj)
     
-    def build(self):
+    def build(self, filename: str = 'output.sb3'):
         extensions = []
         targets = []
         monitors = []
@@ -27,7 +28,7 @@ class Project:
             match dependency:
                 case Target():
                     if not dependency.costumes:
-                        raise ValueError(f'{dependency.name} must have at least 1 costume!')
+                        raise NoCostumeProvided(f'{dependency.name} must have at least 1 costume!')
                     targets.append(dependency.json())
         
         project_json = json.dumps({
@@ -37,7 +38,7 @@ class Project:
             'meta': meta
         })
 
-        zip_dir = (pathlib.Path(main_dir) / 'output.sb3').resolve()
+        zip_dir = (pathlib.Path(main_dir) / filename).resolve()
         
         with zipfile.ZipFile(zip_dir, 'w') as f:
             for file in data:
@@ -175,5 +176,5 @@ class Sound(Asset):
             asset_json['rate'] = sound_info.sample_rate
             asset_json['sampleCount'] = round(sound_info.sample_rate * sound_info.length)
         except:
-            raise ValueError("Please pass in a proper audio file!")
+            raise InvalidAudioFile("Please pass in a proper audio file!")
         return asset_json
