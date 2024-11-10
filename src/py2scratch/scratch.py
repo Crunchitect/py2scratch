@@ -1,8 +1,8 @@
 import json, hashlib, os, sys, pathlib, zipfile, io, warnings, mutagen
 from functools import reduce
 from typing import NamedTuple, Callable
-from .scratch_code import parse_func
-from .errors import *
+from py2scratch.scratch_code import parse_func
+from py2scratch.errors import *
 from PIL import Image
 
 type ScratchObj = Sprite | Stage
@@ -26,7 +26,13 @@ class Project:
         
         for dependency in self.dependencies:
             match dependency:
-                case Target():
+                case Stage():
+                    from py2scratch.code.blocks import all_variables
+                    dependency.variables = {k: [v, ""] for k, v in all_variables.items()}
+                    if not dependency.costumes:
+                        raise NoCostumeProvided(f'{dependency.name} must have at least 1 costume!')
+                    targets.append(dependency.json())
+                case Sprite():
                     if not dependency.costumes:
                         raise NoCostumeProvided(f'{dependency.name} must have at least 1 costume!')
                     targets.append(dependency.json())
@@ -53,6 +59,9 @@ class Target:
         self.current_costume = 1
         self.layer_order = z
         self.volume = 100
+        
+        self.variables = {}
+        self.lists = {}
 
         self.costumes: list[Costume] = []
         self.sounds: list[Sound] = []
@@ -61,8 +70,8 @@ class Target:
     def json(self):
         scratch_code_data = reduce(lambda a, b: a | b, (parse_func(func) for func in self.funcs), {})
         return {
-            'variables': {},
-            'lists': {},
+            'variables': self.variables,
+            'lists': self.lists,
             'broadcasts': {},
             'blocks': scratch_code_data,
             'comments': {},
@@ -88,6 +97,9 @@ class Sprite(Target):
         self.layer_order = z
         self.current_costume = 1
         self.volume = 100
+        
+        self.variables = {}
+        self.lists = {}
         
         self.x = x
         self.y = y

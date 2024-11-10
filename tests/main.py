@@ -14,7 +14,8 @@ toilet.rotation_style = RotationStyles.LEFT_RIGHT
 toilet.costumes.append(Costume('toilet', './assets/toilet.svg'))
 
 def _flag_clicked(sprite):
-    print(4)
+    x = 4
+    print(x)
 
 toilet.funcs.append(_flag_clicked)
 
