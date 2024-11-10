@@ -13,5 +13,5 @@ pip install py2scratch
 
 Or try the `dev` branch, with basic coding capabilities!
 ```cmd
-pip install py2scratch==0.1.0.dev2
+pip install py2scratch==0.1.0.dev3
 ```
