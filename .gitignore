@@ -4,3 +4,4 @@
 test.py
 dist
 /**/__pycache__
+/tests
