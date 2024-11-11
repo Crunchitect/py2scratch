@@ -29,9 +29,10 @@ class ID:
     def __init__(self, id):
         self.id = id
 
-class GreenFlag(ScratchBlock):
-    def __init__(self, *seq: list[ScratchBlock]):
-        self.greenflag_id = gen_random_id()
+class Hat(ScratchBlock):
+    def __init__(self, hat_opcode: str, *seq: list[ScratchBlock]):
+        self.hat_id = gen_random_id()
+        self.hat_opcode = hat_opcode
         self.seq = seq
     
     def json(self):
@@ -45,7 +46,7 @@ class GreenFlag(ScratchBlock):
             else:
                 flattened_seq_json.append(terms)
         linked_seq_json = flattened_seq_json
-        seq_ids = [self.greenflag_id, *[block['id'] for block in flattened_seq_json], None]
+        seq_ids = [self.hat_id, *[block['id'] for block in flattened_seq_json], None]
         for idx, [id_par, _, id_next] in enumerate(sliding_win(seq_ids, 3)):
             if 'parent' not in linked_seq_json[idx]:
                 linked_seq_json[idx]['parent'] = id_par
@@ -59,7 +60,6 @@ class GreenFlag(ScratchBlock):
         orphans = get_orphans()
         adopted_count = 0
         for orphan in orphans:
-            print("!")
             orphan_id = orphan.json()['id']
             for block in linked_seq_json:
                 # Janky, but works.
@@ -73,8 +73,8 @@ class GreenFlag(ScratchBlock):
             return TooManyOrphans("Non Top-level parentless blocks detected. Likely an internal bug.")
         
         hatted_seq_json = [{
-            "opcode": "event_whenflagclicked",
-            "id": self.greenflag_id,
+            "opcode": self.hat_opcode,
+            "id": self.hat_id,
             "next": seq_ids[1],
             "parent": None,
             "inputs": {},
@@ -85,6 +85,13 @@ class GreenFlag(ScratchBlock):
             "y": 0
         }] + linked_seq_json
         return hatted_seq_json
+
+class GreenFlag(Hat):
+    def __init__(self, *seq):
+        super().__init__('event_whenflagclicked', *seq)
+    
+    def json(self):
+        return super().json()
 
 class Variable(ScratchBlock):
     def __init__(self, name: str, idx: str):
