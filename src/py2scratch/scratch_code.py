@@ -1,7 +1,7 @@
 import astroid, inspect, typing
-from py2scratch.errors import *
-from py2scratch.code.blocks import *
-from py2scratch.code.pyparser import *
+from .errors import *
+from .code.blocks import *
+from .code.pyparser import *
 
 def get_hat(func_name: str):
     match func_name.split('_')[1:]:
@@ -41,7 +41,7 @@ def parse_func(func: typing.Callable):
 
 if __name__ == '__main__':
     def _flag_clicked(sprite):
-        x = 3
+        x = print('hi!')
         print(x)
         
     print(parse_func(_flag_clicked))

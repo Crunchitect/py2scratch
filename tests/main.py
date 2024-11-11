@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(0, '..')
-from py2scratch.scratch import Project, Stage, Sprite, Sound, Costume, RotationStyles
+from src.py2scratch import Project, Stage, Sprite, Sound, Costume, RotationStyles
 
 proj = Project()
 
@@ -14,8 +14,7 @@ toilet.rotation_style = RotationStyles.LEFT_RIGHT
 toilet.costumes.append(Costume('toilet', './assets/toilet.svg'))
 
 def _flag_clicked(sprite):
-    x = 4
-    print(x)
+    print(print(4))
 
 toilet.funcs.append(_flag_clicked)
 

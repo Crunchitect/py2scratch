@@ -1,6 +1,6 @@
 import astroid
-import py2scratch.code.blocks as blocks
-from py2scratch.code.utils import gen_random_id
+from . import blocks
+from .utils import gen_random_id
 
 defined_functions = []
 
@@ -22,7 +22,7 @@ def handle_builtins(stmt: astroid.Call):
             var = blocks.Variable(f'tmp-{gen_random_id()}', gen_random_id())
             return blocks.Ref([
                 blocks.SetVariable(var, ""),
-                blocks.Say(handle_expr(stmt.args[0]))
+                blocks.Say(handle_expr(stmt.args[0])).refify()
             ], var)
         case _:
             return None

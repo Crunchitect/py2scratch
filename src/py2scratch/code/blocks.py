@@ -1,5 +1,4 @@
 import abc
-import dataclasses
 from py2scratch.code.utils import *
 
 all_variables = {}
@@ -10,6 +9,14 @@ class ScratchBlock:
     def json(self):
         ...
 
+class ScratchBlockRef:
+    @abc.abstractmethod
+    def refify(self):
+        ...
+    
+    @abc.abstractmethod
+    def json(self):
+        ...
 class Code(ScratchBlock):
     def __init__(self, blocks: ScratchBlock):
         self.blocks = blocks
@@ -24,11 +31,21 @@ class GreenFlag(ScratchBlock):
     
     def json(self):
         seq_json = [block.json() for block in self.seq]
-        seq_ids = [self.greenflag_id, *[block['id'] for block in seq_json], None]
+        flattened_seq_json = []
+        for terms in seq_json:
+            # for Refs.
+            if isinstance(terms, list):
+                for term in terms:
+                    flattened_seq_json.append(term)
+            # for everything else.
+            else:
+                flattened_seq_json.append(terms)
+        # print("BRO?!",self.seq, seq_json)
+        seq_ids = [self.greenflag_id, *[block['id'] for block in flattened_seq_json], None]
         for idx, [id_par, _, id_next] in enumerate(sliding_win(seq_ids, 3)):
-            seq_json[idx]['parent'] = id_par
-            seq_json[idx]['next'] = id_next
-        seq_json = [{
+            flattened_seq_json[idx]['parent'] = id_par
+            flattened_seq_json[idx]['next'] = id_next
+        flattened_seq_json = [{
             "opcode": "event_whenflagclicked",
             "id": self.greenflag_id,
             "next": seq_ids[1],
@@ -39,8 +56,8 @@ class GreenFlag(ScratchBlock):
             "topLevel": True,
             "x": 0,
             "y": 0
-        }] + seq_json
-        return seq_json
+        }] + flattened_seq_json
+        return flattened_seq_json
 
 class Variable(ScratchBlock):
     def __init__(self, name: str, idx: str):
@@ -51,11 +68,14 @@ class Variable(ScratchBlock):
     def json(self):
         return [12, self.name, self.id]
 
-    
-@dataclasses.dataclass
+
 class Ref:
-    cmds: list[ScratchBlock]
-    ref: Variable
+    def __init__(self, cmds: list[ScratchBlock], ref: Variable):
+        self.cmds = cmds
+        self.ref = ref
+    
+    def json(self):
+        return [cmd.json() for cmd in self.cmds]
 
 class List(ScratchBlock):
     def __init__(self, name: str, idx: str):
@@ -93,31 +113,31 @@ class SetVariable(ScratchBlock):
         }
 
 type ShadowBlocks = str | Variable | List | Ref
-class Say(ScratchBlock):
+class Say(ScratchBlockRef):
     def __init__(self, msg: ShadowBlocks):
-        self.msg = msg
+        self.msg = msg[0] if isinstance(msg, list) else msg
+    
+    def refify(self):
+        if isinstance(self.msg, Ref):
+            return Ref([*self.msg.cmds, self], self.msg.ref)
+        else:
+            return self
     
     def json(self):
-        msg = None
-        if isinstance(self.msg, list):
-            msg = self.msg[0]
-        else:
-            msg = self.msg
-        
-        if isinstance(msg, str):
-            msg = [1, [10, msg]]
-        elif isinstance(msg, Variable) or isinstance(msg, List):
-            # print(msg.json(), 'i')
-            msg = [3, msg.json(), [10, 'default']]
-        elif isinstance(msg, Ref):
-            msg = [3, msg.ref.json(), [10, 'default']]
-        else:
-            msg = [1, [10, str(msg)]]
+        match self.msg:
+            case str():
+                self.msg = [1, [10, self.msg]]
+            case Variable() | List():
+                self.msg = [3, self.msg.json(), [10, 'default']]
+            case Ref():
+                self.msg = [3, self.msg.ref.json(), [10, 'default']]
+            case _:
+                self.msg = [1, [10, str(self.msg)]]
         return {
             "opcode": "looks_say",
             "id": gen_random_id(),
             "inputs": {
-                "MESSAGE": msg
+                "MESSAGE": self.msg
             },
             "fields": {},
             "shadow": False,
