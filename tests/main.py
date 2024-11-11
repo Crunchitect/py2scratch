@@ -14,7 +14,9 @@ toilet.rotation_style = RotationStyles.LEFT_RIGHT
 toilet.costumes.append(Costume('toilet', './assets/toilet.svg'))
 
 def _flag_clicked(sprite):
-    print(print(4))
+    sec_q = input("What's the second question?")
+    x = input(sec_q)
+    print(x)
 
 toilet.funcs.append(_flag_clicked)
 

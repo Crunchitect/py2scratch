@@ -28,14 +28,15 @@ def parse_func(func: typing.Callable):
     if func_name.startswith('_'):
         hat = get_hat(func_name)
     else:
-        raise NotImplementedError('Special Functions (My blocks) are not supported. sorgy :(')
+        raise NotImplementedError(f"No custom functions support yet. Defined {func_name}")
     
-    func_body = parse_tree.body
+    func_body = parse_tree.body                                                                                                                                                                                                                                                                     
     scratch_body = []
     for stmt in func_body:
         scratch_body += unref(handle_stmt(stmt))
     
     scratch_tree = Code(hat(*scratch_body))
+    print(scratch_tree.json())
     return scratch_tree.json()
         
 
