@@ -27,7 +27,7 @@ class Project:
         for dependency in self.dependencies:
             match dependency:
                 case Stage():
-                    from py2scratch.code.blocks import all_variables
+                    from .code.blocks import all_variables
                     dependency.variables = {k: [v, ""] for k, v in all_variables.items()}
                     if not dependency.costumes:
                         raise NoCostumeProvided(f'{dependency.name} must have at least 1 costume!')
