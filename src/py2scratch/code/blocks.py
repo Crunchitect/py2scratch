@@ -5,6 +5,8 @@ from ..errors import *
 all_variables = {}
 all_lists = {}
 
+all_variables_ref = []
+
 class ScratchBlock:
     @abc.abstractmethod
     def json(self):
@@ -98,6 +100,7 @@ class Variable(ScratchBlock):
         self.name = name
         self.id = idx
         all_variables[idx] = name
+        all_variables_ref.append(self)
         
     def json(self):
         return [12, self.name, self.id]

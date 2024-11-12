@@ -40,6 +40,10 @@ def handle_builtins(stmt: astroid.Call):
         case _:
             return None
 
+def handle_name(expr: astroid.Name):
+    idx = [ref.name for ref in blocks.all_variables_ref].index(expr.name)
+    return [blocks.Variable(blocks.all_variables_ref[idx].name, blocks.all_variables_ref[idx].id)]
+
 def handle_const(value: astroid.Const):
     return value.value
 
@@ -52,7 +56,7 @@ def handle_expr(expr: astroid.Expr):
         case astroid.Call():
             return handle_call(expr)
         case astroid.Name():
-            return [blocks.Variable(expr.name, gen_random_id())]
+            return handle_name(expr)
         case _:
             raise NotImplementedError(f"{type(expr)} expressions are still unsupported currently. {expr} provided.")
 
