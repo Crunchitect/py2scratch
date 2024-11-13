@@ -245,11 +245,14 @@ class Ask(ScratchBlockRef):
             "topLevel": False
         }
 
-class Add(ScratchBlockRef):
-    def __init__(self, left, right):
+class BinOp(ScratchBlockRef):
+    def __init__(self, op, left_attr, right_attr, left, right):
         self.id = gen_random_id()
         self.left = left
         self.right = right
+        self.op = op
+        self.left_attr = left_attr
+        self.right_attr = right_attr
     
     def refify(self):
         cmds = []
@@ -265,49 +268,25 @@ class Add(ScratchBlockRef):
         left = convert_inline_to_json(self.left)
         right = convert_inline_to_json(self.right)
         return {
-            "opcode": "operator_add",
+            "opcode": self.op,
             "next": None,
             "id": self.id,
             "inputs": {
-                "NUM1": left,
-                "NUM2": right
+                self.left_attr: left,
+                self.right_attr: right
             },
             "fields": {},
             "shadow": False,
             "topLevel": False
         }
 
-class Join(ScratchBlockRef):
+class Add(BinOp):
     def __init__(self, left, right):
-        self.id = gen_random_id()
-        self.left = left
-        self.right = right
-    
-    def refify(self):
-        cmds = []
-        cmds.extend(self.left.cmds if isinstance(self.left, Ref) else [])
-        cmds.extend(self.right.cmds if isinstance(self.right, Ref) else [])
-        result = Variable(f'tmp-join-{gen_random_id()}', gen_random_id())
-        global inline_blocks
-        inline_blocks.append(self)
-        cmds.extend([SetVariable(result, ID(self.id))])
-        return Ref(cmds, result)
-    
-    def json(self):
-        left = convert_inline_to_json(self.left)
-        right = convert_inline_to_json(self.right)
-        return {
-            "opcode": "operator_join",
-            "next": None,
-            "id": self.id,
-            "inputs": {
-                "STRING1": left,
-                "STRING2": right
-            },
-            "fields": {},
-            "shadow": False,
-            "topLevel": False
-        }
+        super().__init__("opearator_add", "NUM1", "NUM2", left, right)
+
+class Join(BinOp):
+    def __init__(self, left, right):
+        super().__init__("opearator_join", "STRING1", "STRING2", left, right)
 
 def convert_inline_to_json(val):
     if isinstance(val, list) and type(val[0]) != int:
