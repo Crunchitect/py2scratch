@@ -1,6 +1,8 @@
-import abc, warnings
+import abc, warnings, copy
 from .utils import *
 from ..errors import *
+
+inline_blocks = []
 
 all_variables = {}
 all_lists = {}
@@ -12,7 +14,12 @@ class ScratchBlock:
     def json(self):
         ...
 
-class ScratchBlockRef:
+class ScratchBlockInline:
+    @abc.abstractmethod
+    def json(self):
+        ...
+
+class ScratchBlockRef(ScratchBlock):
     @abc.abstractmethod
     def refify(self):
         ...
@@ -36,48 +43,53 @@ class Hat(ScratchBlock):
         self.hat_id = gen_random_id()
         self.hat_opcode = hat_opcode
         self.seq = seq
+        self.queue = []
     
-    def json(self):
-        seq_json = [block.json() for block in self.seq]
-        flattened_seq_json = []
-        # Flatten 1-layer.
-        for terms in seq_json:
-            if isinstance(terms, list):
-                for term in terms:
-                    flattened_seq_json.append(term)
-            else:
-                flattened_seq_json.append(terms)
-        linked_seq_json = flattened_seq_json
-        seq_ids = [self.hat_id, *[block['id'] for block in flattened_seq_json], None]
+    def _conv(self, seq):
+        converted = []
+        for block in seq:
+            match block:
+                case ScratchBlock():
+                    converted.append(block.json())
+                case Ref():
+                    for subblock in block.json():
+                        converted.append(subblock)
+        return converted
+                
+    def _link(self, seq):
+        linked = seq
+        seq_ids = [self.hat_id, *[block['id'] for block in seq], None]
         for idx, [id_par, _, id_next] in enumerate(sliding_win(seq_ids, 3)):
-            if 'parent' not in linked_seq_json[idx]:
-                linked_seq_json[idx]['parent'] = id_par
-            if 'next' not in linked_seq_json[idx]:
-                linked_seq_json[idx]['next'] = id_next
+            if 'parent' not in linked[idx]:
+                linked[idx]['parent'] = id_par
+            if 'next' not in linked[idx]:
+                linked[idx]['next'] = id_next
+        return linked
+    
+    def _add_inline(self, seq):
+        added_inline = seq
         
-        complete_seq_json = linked_seq_json
-        
-        from .pyparser import get_orphans
-        # Adopt the orphans.
-        orphans = get_orphans()
-        adopted_count = 0
-        for orphan in orphans:
-            orphan_id = orphan.json()['id']
-            for block in linked_seq_json:
-                # Janky, but works.
-                if orphan_id in repr(block):
-                    orphan_json = orphan.json()
-                    orphan_json['parent'] = block['id']
-                    complete_seq_json.append(orphan_json)
-                    adopted_count += 1
+        global inline_blocks
+        non_root_inline_blocks = 0
+        for inline_block in inline_blocks:
+            inline_block_id = inline_block.json()['id']
+            for block in seq + [i for i in inline_blocks if i != inline_block]:
+                if inline_block_id in repr(block):
+                    inline_block_json = inline_block.json()
+                    inline_block_json['parent'] = block['id']
+                    added_inline.append(inline_block_json)
+                    non_root_inline_blocks += 1
                     break
-        if adopted_count < len(orphans):
-            return TooManyOrphans("Non Top-level parentless blocks detected. Likely an internal bug.")
-        
-        hatted_seq_json = [{
+        if non_root_inline_blocks < len(inline_blocks):
+            raise NonRootInlineBlocks("Non Top-level parentless blocks detected. Likely an internal bug.")
+        return added_inline
+    
+    def _add_hat(self, seq):
+        first_block_id = seq[0]['id']
+        return [{
             "opcode": self.hat_opcode,
             "id": self.hat_id,
-            "next": seq_ids[1],
+            "next": first_block_id,
             "parent": None,
             "inputs": {},
             "fields": {},
@@ -85,8 +97,21 @@ class Hat(ScratchBlock):
             "topLevel": True,
             "x": 0,
             "y": 0
-        }] + linked_seq_json
-        return hatted_seq_json
+        }] + seq
+    
+    def json(self):
+        jsoned = []
+        
+        self.queue.append(copy.deepcopy(self.seq))
+        while self.queue:
+            converted = self._conv(self.queue[0])
+            linked = self._link(converted)
+            added_inline = self._add_inline(linked)
+            jsoned.extend(added_inline)
+            self.queue.pop(0)
+        added_hat = self._add_hat(jsoned)
+        
+        return added_hat
 
 class GreenFlag(Hat):
     def __init__(self, *seq):
@@ -142,7 +167,7 @@ class SetVariable(ScratchBlockRef):
                 val = [3, self.val.json(), [10, 'default']]
             case Ref():
                 val = [3, self.val.ref.json(), [10, 'default']]
-            case ID():
+            case ScratchBlockInline():
                 val = [3, self.val.id, [10, 'default']]
             case str():
                 val = [1, [10, self.val]]
@@ -184,7 +209,7 @@ class Say(ScratchBlockRef):
                 ...
             case ScratchBlock() | ScratchBlockRef():
                 self.msg = [3, self.msg.json(), [10, 'default']]
-            case ID():
+            case ScratchBlockInline():
                 self.msg = [3, self.msg.id, [10, 'default']]
             case Ref():
                 self.msg = [3, self.msg.ref.json(), [10, 'default']]
@@ -201,8 +226,10 @@ class Say(ScratchBlockRef):
             "topLevel": False
         }
 
-class Answer(ScratchBlock):
+class Answer(ScratchBlockInline):
     def __init__(self):
+        global inline_blocks
+        inline_blocks.append(self)
         self.id = gen_random_id()
     
     def json(self):

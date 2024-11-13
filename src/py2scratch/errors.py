@@ -6,8 +6,8 @@ class NoHatExists(PyToScratchError):
     """ There is no hat blocks with the specified name. """
 class NoCostumeProvided(PyToScratchError):
     """ No costumes was added to the sprites/stage. """
-class TooManyOrphans(PyToScratchError):
-    """Too many orphan blocks. (Blocks with no `next` and `parent`)"""
+class NonRootInlineBlocks(PyToScratchError):
+    """Too many inline blocks. (Blocks with no `next` and `parent`)"""
 class InvalidAudioFile(PyToScratchError):
     """ Invalid Audio File """
 

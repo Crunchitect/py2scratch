@@ -36,7 +36,7 @@ def parse_func(func: typing.Callable):
         scratch_body += unref(handle_stmt(stmt))
     
     scratch_tree = Code(hat(*scratch_body))
-    print(scratch_tree.json())
+    # print(scratch_tree.json())
     return scratch_tree.json()
         
 

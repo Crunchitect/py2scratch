@@ -3,7 +3,6 @@ from . import blocks
 from .utils import gen_random_id
 
 defined_functions = []
-orphans: list[blocks.ScratchBlock | blocks.ScratchBlockRef] = []
 
 def handle_call(stmt: astroid.Call):
     if stmt.func.name in defined_functions:
@@ -26,16 +25,14 @@ def handle_builtins(stmt: astroid.Call):
                 blocks.Say(handle_expr(stmt.args[0])).refify()
             ], var)
         case 'input':
-            print("input!")
             if len(stmt.args) > 1:
                 raise SyntaxError(f"`input` statements take 1 argument. {len(stmt.args)} provided.")
             prompt = stmt.args[0]
             var = blocks.Variable(f'tmp-ret-{gen_random_id()}', gen_random_id())
             answer_stmt = blocks.Answer()
-            orphans.append(answer_stmt)
             return blocks.Ref([
                 blocks.Ask(handle_expr(prompt)).refify(),
-                blocks.SetVariable(var, blocks.ID(answer_stmt.id)).refify()
+                blocks.SetVariable(var, answer_stmt).refify()
             ], var)
         case _:
             return None
@@ -74,9 +71,6 @@ def handle_stmt(stmt: astroid.NodeNG):
             return handle_assign(stmt)
         case _:
             raise NotImplementedError(f"{type(stmt)} Statements are still unsupported currently. {stmt} provided.")
-
-def get_orphans():
-    return orphans
 
 def unref(stmt: blocks.ScratchBlock | blocks.Ref):
     ref = stmt
