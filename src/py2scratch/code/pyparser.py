@@ -53,7 +53,7 @@ def handle_const(value: astroid.Const):
 
 class BinOp:
     @staticmethod
-    def handle_add(left: astroid.Expr, right: astroid.Expr):
+    def check_type(left: astroid.Expr, right: astroid.Expr):
         try:
             left_type = [type(inferred.value) for inferred in left.infer()]
             right_type = [type(inferred.value) for inferred in right.infer()]
@@ -68,18 +68,32 @@ class BinOp:
                 right_type = float
             else:
                 right_type = right_type[0]
-            
-            if left_type != right_type:
-                raise TypeError(f"Can't do addition with '{left_type}' and '{right_type}'")
-            
-            if left_type == float or left_type == int:
-                return [blocks.Add(handle_expr(left), handle_expr(right)).refify()]
-            elif left_type == str:
-                return [blocks.Join(handle_expr(left), handle_expr(right)).refify()]
-            else:
-                raise NotImplementedError(f"Addition of type {left_type} is not supported.")
+            return left_type, right_type
         except astroid.AstroidError:
             raise TypeUninferrable(f"Can't infer type from {left} + {right}")
+    
+    @staticmethod
+    def handle_add(left: astroid.Expr, right: astroid.Expr):
+        left_type, right_type = BinOp.check_type(left, right)
+        
+        if left_type != right_type:
+            raise TypeError(f"Can't do addition with '{left_type}' and '{right_type}'")
+        
+        if left_type in [int, float]:
+            return [blocks.Add(handle_expr(left), handle_expr(right)).refify()]
+        elif left_type == str:
+            return [blocks.Join(handle_expr(left), handle_expr(right)).refify()]
+        else:
+            raise NotImplementedError(f"Addition of type {left_type} is not supported.")
+    
+    @staticmethod
+    def handle_sub(left: astroid.Expr, right: astroid.Expr):
+        left_type, right_type = BinOp.check_type(left, right)
+        
+        if left_type not in [int, float] or right_type not in [int, float]:
+            raise SyntaxError(f"Can't do subtraction with '{left}' and '{right}'.")
+        else:
+            return [blocks.Sub(handle_expr(left), handle_expr(right)).refify()]
 
 def handle_binop(expr: astroid.BinOp):
     binary_operators = ['+', '-', '*', '@', '/', '%', '**', '<<', '>>', '|', '^', '&', '//']
@@ -88,8 +102,10 @@ def handle_binop(expr: astroid.BinOp):
     match expr.op:
         case '+':
             return BinOp.handle_add(expr.left, expr.right)
+        case '-':
+            return BinOp.handle_sub(expr.left, expr.right)
         case _:
-            raise NotImplementedError(f'Operator {expr.op} is not implemented yet.')
+            raise NotImplementedError(f"Operator '{expr.op}' is not implemented yet.")
 
 def handle_expr(expr: astroid.Expr):
     match expr:

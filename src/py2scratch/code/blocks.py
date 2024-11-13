@@ -258,7 +258,7 @@ class BinOp(ScratchBlockRef):
         cmds = []
         cmds.extend(self.left.cmds if isinstance(self.left, Ref) else [])
         cmds.extend(self.right.cmds if isinstance(self.right, Ref) else [])
-        result = Variable(f'tmp-add-{gen_random_id()}', gen_random_id())
+        result = Variable(f'tmp-binop-{gen_random_id()}', gen_random_id())
         global inline_blocks
         inline_blocks.append(self)
         cmds.extend([SetVariable(result, ID(self.id))])
@@ -282,11 +282,15 @@ class BinOp(ScratchBlockRef):
 
 class Add(BinOp):
     def __init__(self, left, right):
-        super().__init__("opearator_add", "NUM1", "NUM2", left, right)
+        super().__init__("operator_add", "NUM1", "NUM2", left, right)
+        
+class Sub(BinOp):
+    def __init__(self, left, right):
+        super().__init__("operator_subtract", "NUM1", "NUM2", left, right)
 
 class Join(BinOp):
     def __init__(self, left, right):
-        super().__init__("opearator_join", "STRING1", "STRING2", left, right)
+        super().__init__("operator_join", "STRING1", "STRING2", left, right)
 
 def convert_inline_to_json(val):
     if isinstance(val, list) and type(val[0]) != int:
