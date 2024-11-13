@@ -1,6 +1,7 @@
-import astroid
+import astroid, warnings
 from . import blocks
 from .utils import gen_random_id
+from ..errors import *
 
 defined_functions = []
 
@@ -34,6 +35,8 @@ def handle_builtins(stmt: astroid.Call):
                 blocks.Ask(handle_expr(prompt)).refify(),
                 blocks.SetVariable(var, answer_stmt).refify()
             ], var)
+        case 'str':
+            return handle_expr(stmt.args[0])
         case _:
             return None
 
@@ -42,7 +45,51 @@ def handle_name(expr: astroid.Name):
     return [blocks.Variable(blocks.all_variables_ref[idx].name, blocks.all_variables_ref[idx].id)]
 
 def handle_const(value: astroid.Const):
-    return value.value
+    if isinstance(value.value, (str, float, int, bool)):
+        return value.value
+    if isinstance(value.value, list):
+        raise NotImplementedError("Lists are not implemented yet.")
+    raise NotImplementedError("Type not supported.")
+
+class BinOp:
+    @staticmethod
+    def handle_add(left: astroid.Expr, right: astroid.Expr):
+        try:
+            left_type = [type(inferred.value) for inferred in left.infer()]
+            right_type = [type(inferred.value) for inferred in right.infer()]
+            
+            if not all([x == left_type[0] for x in left_type]):
+                warnings.warn("{left} not static. Assuming `float`")
+                left_type = float
+            else:
+                left_type = left_type[0]
+            if not all([x == right_type[0] for x in right_type]):
+                warnings.warn("{right} not static. Assuming `float`")
+                right_type = float
+            else:
+                right_type = right_type[0]
+            
+            if left_type != right_type:
+                raise TypeError(f"Can't do addition with '{left_type}' and '{right_type}'")
+            
+            if left_type == float or left_type == int:
+                return [blocks.Add(handle_expr(left), handle_expr(right)).refify()]
+            elif left_type == str:
+                return [blocks.Join(handle_expr(left), handle_expr(right)).refify()]
+            else:
+                raise NotImplementedError(f"Addition of type {left_type} is not supported.")
+        except astroid.AstroidError:
+            raise TypeUninferrable(f"Can't infer type from {left} + {right}")
+
+def handle_binop(expr: astroid.BinOp):
+    binary_operators = ['+', '-', '*', '@', '/', '%', '**', '<<', '>>', '|', '^', '&', '//']
+    if expr.op not in binary_operators:
+        raise SyntaxError(f'{expr.op!r} is not a valid operator.')
+    match expr.op:
+        case '+':
+            return BinOp.handle_add(expr.left, expr.right)
+        case _:
+            raise NotImplementedError(f'Operator {expr.op} is not implemented yet.')
 
 def handle_expr(expr: astroid.Expr):
     match expr:
@@ -54,6 +101,8 @@ def handle_expr(expr: astroid.Expr):
             return handle_call(expr)
         case astroid.Name():
             return handle_name(expr)
+        case astroid.BinOp():
+            return handle_binop(expr)
         case _:
             raise NotImplementedError(f"{type(expr)} expressions are still unsupported currently. {expr} provided.")
 

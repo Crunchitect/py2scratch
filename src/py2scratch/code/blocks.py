@@ -68,12 +68,11 @@ class Hat(ScratchBlock):
     
     def _add_inline(self, seq):
         added_inline = seq
-        
         global inline_blocks
         non_root_inline_blocks = 0
         for inline_block in inline_blocks:
-            inline_block_id = inline_block.json()['id']
-            for block in seq + [i for i in inline_blocks if i != inline_block]:
+            inline_block_id = inline_block.id
+            for block in (seq + [i for i in inline_blocks if i != inline_block]):
                 if inline_block_id in repr(block):
                     inline_block_json = inline_block.json()
                     inline_block_json['parent'] = block['id']
@@ -139,6 +138,10 @@ class Ref:
     def json(self):
         return [cmd.json() for cmd in self.cmds]
 
+class ID:
+    def __init__(self, id):
+        self.id = id
+
 class List(ScratchBlock):
     def __init__(self, name: str, idx: str):
         self.name = name
@@ -161,21 +164,7 @@ class SetVariable(ScratchBlockRef):
             return self
     
     def json(self):
-        val = None
-        match self.val:
-            case ScratchBlock() | ScratchBlockRef():
-                val = [3, self.val.json(), [10, 'default']]
-            case Ref():
-                val = [3, self.val.ref.json(), [10, 'default']]
-            case ScratchBlockInline():
-                val = [3, self.val.id, [10, 'default']]
-            case str():
-                val = [1, [10, self.val]]
-            case int() | float():
-                val = [1, [10, str(self.val)]]
-            case _:
-                warnings.warn(f"Unknown/Unsupported Type ({type(self.val)}) for variable {repr(self.val)}, Assuming `repr`")
-                val = [1, [10, repr(self.val)]]
+        val = convert_inline_to_json(self.val)
         return {
             "opcode": "data_setvariableto",
             "id": self.id,
@@ -202,24 +191,12 @@ class Say(ScratchBlockRef):
             return self
     
     def json(self):
-        match self.msg:
-            case str():
-                self.msg = [1, [10, self.msg]]
-            case list():
-                ...
-            case ScratchBlock() | ScratchBlockRef():
-                self.msg = [3, self.msg.json(), [10, 'default']]
-            case ScratchBlockInline():
-                self.msg = [3, self.msg.id, [10, 'default']]
-            case Ref():
-                self.msg = [3, self.msg.ref.json(), [10, 'default']]
-            case _:
-                self.msg = [1, [10, str(self.msg)]]
+        msg = convert_inline_to_json(self.msg)
         return {
             "opcode": "looks_say",
             "id": self.id,
             "inputs": {
-                "MESSAGE": self.msg
+                "MESSAGE": msg
             },
             "fields": {},
             "shadow": False,
@@ -256,24 +233,97 @@ class Ask(ScratchBlockRef):
             return self
     
     def json(self):
-        match self.question:
-            case str():
-                self.question = [1, [10, self.question]]
-            case list():
-                ...
-            case ScratchBlock() | ScratchBlockRef():
-                self.question = [3, self.question.json(), [10, 'default']]
-            case Ref():
-                self.question = [3, self.question.ref.json(), [10, 'default']]
-            case _:
-                self.question = [1, [10, str(self.question)]]
+        question = convert_inline_to_json(self.question)
         return {
             "opcode": "sensing_askandwait",
             "id": self.id,
             "inputs": {
-                "QUESTION": self.question
+                "QUESTION": question
             },
             "fields": {},
             "shadow": False,
             "topLevel": False
         }
+
+class Add(ScratchBlockRef):
+    def __init__(self, left, right):
+        self.id = gen_random_id()
+        self.left = left
+        self.right = right
+    
+    def refify(self):
+        cmds = []
+        cmds.extend(self.left.cmds if isinstance(self.left, Ref) else [])
+        cmds.extend(self.right.cmds if isinstance(self.right, Ref) else [])
+        result = Variable(f'tmp-add-{gen_random_id()}', gen_random_id())
+        global inline_blocks
+        inline_blocks.append(self)
+        cmds.extend([SetVariable(result, ID(self.id))])
+        return Ref(cmds, result)
+    
+    def json(self):
+        left = convert_inline_to_json(self.left)
+        right = convert_inline_to_json(self.right)
+        return {
+            "opcode": "operator_add",
+            "next": None,
+            "id": self.id,
+            "inputs": {
+                "NUM1": left,
+                "NUM2": right
+            },
+            "fields": {},
+            "shadow": False,
+            "topLevel": False
+        }
+
+class Join(ScratchBlockRef):
+    def __init__(self, left, right):
+        self.id = gen_random_id()
+        self.left = left
+        self.right = right
+    
+    def refify(self):
+        cmds = []
+        cmds.extend(self.left.cmds if isinstance(self.left, Ref) else [])
+        cmds.extend(self.right.cmds if isinstance(self.right, Ref) else [])
+        result = Variable(f'tmp-join-{gen_random_id()}', gen_random_id())
+        global inline_blocks
+        inline_blocks.append(self)
+        cmds.extend([SetVariable(result, ID(self.id))])
+        return Ref(cmds, result)
+    
+    def json(self):
+        left = convert_inline_to_json(self.left)
+        right = convert_inline_to_json(self.right)
+        return {
+            "opcode": "operator_join",
+            "next": None,
+            "id": self.id,
+            "inputs": {
+                "STRING1": left,
+                "STRING2": right
+            },
+            "fields": {},
+            "shadow": False,
+            "topLevel": False
+        }
+
+def convert_inline_to_json(val):
+    if isinstance(val, list) and type(val[0]) != int:
+        val = val[0]
+    match val:
+        case ScratchBlock() | ScratchBlockRef():
+            val = [3, val.json(), [10, 'default']]
+        case Ref():
+            val = [3, val.ref.json(), [10, 'default']]
+        case ScratchBlockInline() | ID():
+            val = [3, val.id, [10, 'default']]
+        case str():
+            val = [1, [10, val]]
+        case int() | float():
+            val = [1, [10, str(val)]]
+        case _:
+            warnings.warn(f"Unknown/Unsupported Type ({type(val)}) for variable {str(val)}, Assuming `str`")
+            val = [1, [10, repr(val)]]
+    return val
