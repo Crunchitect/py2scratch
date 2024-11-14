@@ -288,6 +288,10 @@ class Sub(BinOp):
     def __init__(self, left, right):
         super().__init__("operator_subtract", "NUM1", "NUM2", left, right)
 
+class Mul(BinOp):
+    def __init__(self, left, right):
+        super().__init__("operator_multiply", "NUM1", "NUM2", left, right)
+
 class Join(BinOp):
     def __init__(self, left, right):
         super().__init__("operator_join", "STRING1", "STRING2", left, right)

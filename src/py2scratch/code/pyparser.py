@@ -94,6 +94,15 @@ class BinOp:
             raise SyntaxError(f"Can't do subtraction with '{left}' and '{right}'.")
         else:
             return [blocks.Sub(handle_expr(left), handle_expr(right)).refify()]
+    
+    @staticmethod
+    def handle_mul(left: astroid.Expr, right: astroid.Expr):
+        left_type, right_type = BinOp.check_type(left, right)
+        
+        if left_type not in [int, float] or right_type not in [int, float]:
+            raise SyntaxError(f"Can't do subtraction with '{left}' and '{right}'.")
+        else:
+            return [blocks.Mul(handle_expr(left), handle_expr(right)).refify()]
 
 def handle_binop(expr: astroid.BinOp):
     binary_operators = ['+', '-', '*', '@', '/', '%', '**', '<<', '>>', '|', '^', '&', '//']
@@ -104,6 +113,8 @@ def handle_binop(expr: astroid.BinOp):
             return BinOp.handle_add(expr.left, expr.right)
         case '-':
             return BinOp.handle_sub(expr.left, expr.right)
+        case '*':
+            return BinOp.handle_mul(expr.left, expr.right)
         case _:
             raise NotImplementedError(f"Operator '{expr.op}' is not implemented yet.")
 
